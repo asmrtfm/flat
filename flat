@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
-[[ "${1,,}" != +(\-)@(h)?(elp) ]] || { printf '\nUsage: [ <io> | ] flat [<files...>]\n\n'; exit 0; }
+[[ "${1,,}" != +(\-)@(h)?(elp) ]] || { cat <<'EOL'
+USAGE:
+	[ <io> | ]  flat  [-n]  [<files...>]
+SYNOPSIS:
+	Vertically oriented code, while perhaps to some, is more readable,
+	is more tedious to parse with traditional command line utilities.
+	This is because no single line contains enough context to infer anything meaningful otf.
+	This scipt removes unecessary line breaks, and if invoked with the `-n` flag
+	will prefix the flattened lines with the original line numbers as a range.
+	It works well with dart/flutter, js, and theoretically any language
+	with similar syntax for newlines and comments.
+
+EOL
+	exit 0
+}
 
 # strip comments while injecting line number prefixes
 stripCount() {
@@ -18,7 +32,6 @@ stripCount() {
 }
 
 flattener() { sed ':a;N;$!ba;s/;\n/;/g' ${1:-} | tr -d '\n' | sed 's/;/;\n/g;s/}/}\n/g'; printf '\n'; }
-flatten() { [ -t 0 ] || { cat - | flattener ; }; for((a=1;a<=$#;a++)){ [[ ! -f "${!a}" ]] || flattener "${!a}"; }; }
 
 reconstruction() {
 	local -ai N
@@ -34,5 +47,8 @@ reconstruction() {
 	done < <(cat - )
 }
 
-[ -t 0 ] || { cat - | stripCount | flattener | reconstruction ; }
-for((a=1;a<=$#;a++)){ [[ ! -e "${!a}" || -d "$(realpath "${!a}")" ]] || { cat "${!a}" | stripCount | flattener | reconstruction | tee ".${!a}.flat" ; }; }
+flatten() { stripCount | flattener | reconstruction ; }
+flatter() { flatten | cut -d\  -f2- ; }
+[[ "${1,,}" != +(\-)@(n) ]] && Action=flatter || Action=flatten
+[ -t 0 ] || { cat - | ${Action} ; }
+for((a=1;a<=$#;a++)){ [[ ! -e "${!a}" || -d "$(realpath "${!a}")" ]] || { cat "${!a}" | ${Action} | tee ".${!a}.flat" ; }; }
