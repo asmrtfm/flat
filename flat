@@ -36,11 +36,3 @@ reconstruction() {
 
 [ -t 0 ] || { cat - | stripCount | flattener | reconstruction ; }
 for((a=1;a<=$#;a++)){ [[ ! -e "${!a}" || -d "$(realpath "${!a}")" ]] || { cat "${!a}" | stripCount | flattener | reconstruction | tee ".${!a}.flat" ; }; }
-
-# example use:
-#(flatten 4 Analysis)
-#ffAnal() {
-#	for f in $(where "$1" ${2:-.}); do
-#		stripCount "$f" | flattener | reconstruction > ${3:-".${f}.flat"}
-#	done
-#}
