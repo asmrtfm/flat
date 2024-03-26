@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# $1 is a file or nope out
+#[[ -f "$1" ]] || return 2
+
+# strip comments while injecting line number prefixes
+stripCount() {
+	CENSORED=false
+	local -i i=0
+	while ((++i)); read bloat; do
+		case "${bloat//[[:space:]]/}" in
+		*'//'*) [[ "${bloat%%'//'*}" != *[[:alnum:]]* ]] || echo "($i) ${bloat%%'//'*}" ;;
+		*'/*'*'*/'*) [[ "${bloat/'/*'*'*/'/}" != *[[:alnum:]]* ]] || echo "($i) ${bloat/'/*'*'*/'/}" ;;
+		*'/*'*) CENSORED=true; [[ "${bloat%%'/*'*}" != *[[:alnum:]]* ]] || echo "($i) ${bloat%%'/*'*}" ;;
+		*'*/'*) CENSORED=false ;;
+		*) ${CENSORED} || echo "($i) $bloat"
+		esac
+	done < <(cat - )
+}
+
+flattener() { sed ':a;N;$!ba;s/;\n/;/g' ${1:-} | tr -d '\n' | sed 's/;/;\n/g;s/}/}\n/g'; printf '\n'; }
+flatten() { [ -t 0 ] || { cat - | flattener ; }; for((a=1;a<=$#;a++)){ [[ ! -f "${!a}" ]] || flattener "${!a}"; }; }
+
+reconstruction() {
+	local -ai N
+	while read line; do
+		# extract the injected line numbers from the line
+		N=($(echo "$line" | grep -oE '(\([0-9]+\))' | tr -d [\(\)]))
+		# prefix the flattened line with the orginal line number or range of line numbers
+		if ((${#N[@]} > 1)); then
+			echo "(${N[0]}:${N[-1]}): $(echo "$line" | sed 's/([0-9]*)//g')"
+		else
+			echo "(${N[0]}): $(echo "$line" | sed 's/([0-9]*)//g')"
+		fi
+	done < <(cat - )
+}
+
+[ -t 0 ] || { cat - | stripCount | flattener | reconstruction ; }
+for((a=1;a<=$#;a++)){ [[ ! -e "${!a}" || -d "$(realpath "${!a}")" ]] || { cat "${!a}" | stripCount | flattener | reconstruction | tee ".${!a}.flat" ; }; }
+
+# example use:
+#(flatten 4 Analysis)
+#ffAnal() {
+#	for f in $(where "$1" ${2:-.}); do
+#		stripCount "$f" | flattener | reconstruction > ${3:-".${f}.flat"}
+#	done
+#}
