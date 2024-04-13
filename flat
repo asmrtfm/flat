@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+#
+#
+# LOCALITY OF PURPOSE
+# # #
+
 [[ "${1,,}" != +(\-)@(h)?(elp) ]] || { cat <<'EOL'
 USAGE:
 	[ <io> | ]  flat  [-n]  [<files...>]
